@@ -4,6 +4,8 @@
 
 import os
 
+from oscar import get_core_apps
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 SECRET_KEY = '+&l^d!%soa4gxsnx7_txbo0x3uv$@4i&n!r8yte72otwqo7vmh'
@@ -22,11 +24,16 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
 )
 
-INSTALLED_APPS = (
-    'adyen',
-    'django.contrib.contenttypes',
-    'django.contrib.auth',
-)
+INSTALLED_APPS = \
+    [
+        'adyen',
+        'django.contrib.contenttypes',
+        'django.contrib.auth',
+    ] + get_core_apps(
+        [
+            'oscar.apps.order'
+        ]
+    )
 
 OSCAR_SLUG_ALLOW_UNICODE = False
 ADYEN_IDENTIFIER = 'OscaroFR'

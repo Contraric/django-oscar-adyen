@@ -146,13 +146,13 @@ class Scaffold:
             field_specs[Constants.PAYMENT_BRAND_CODE] = (
                 order_data['brand_code']
             )
-            try:
-                field_specs[Constants.PAYMENT_ISSUER_ID] = (
-                    order_data['issuer_id']
-                )
-            except KeyError:
-                raise MissingFieldException(
-                    "Fields issuer_id missing from the order data.")
+            # try:
+            #     field_specs[Constants.PAYMENT_ISSUER_ID] = (
+            #         order_data['issuer_id']
+            #     )
+            # except KeyError:
+            #     raise MissingFieldException(
+            #         "Fields issuer_id missing from the order data.")
 
         if 'order' in order_data:
             field_specs.update(
@@ -467,3 +467,43 @@ class Scaffold:
         returns its result.
         """
         return Facade().build_notification_response(request)
+
+    def get_available_payment_methods(self, request, order_data):
+        """
+        Return the payment form fields as a list of dicts.
+        Expects a large-ish order_data dictionary with details of the order.
+        """
+        field_specs = self.get_directory_field_specs(request, order_data)
+        return Facade().get_available_payment_methods(request, field_specs)
+
+    def get_directory_field_specs(self, request, order_data):
+        now = timezone.now()
+        session_validity = now + timezone.timedelta(minutes=20)
+        session_validity_format = '%Y-%m-%dT%H:%M:%SZ'
+
+        # Build common field specs
+        try:
+            field_specs = {
+                # Payment Request meta-data
+                Constants.MERCHANT_ACCOUNT:
+                    self.config.get_identifier(request),
+                Constants.SKIN_CODE: self.config.get_skin_code(request),
+                Constants.SESSION_VALIDITY:
+                    session_validity.strftime(session_validity_format),
+
+                # Order Data related fields
+                Constants.MERCHANT_REFERENCE: str(order_data['order_number']),
+                Constants.CURRENCY_CODE: order_data['currency_code'],
+                Constants.PAYMENT_AMOUNT: order_data['amount'],
+            }
+        except KeyError:
+            raise MissingFieldException(
+                "One or more fields are missing from the order data.")
+
+        if 'country_code' in order_data:
+            field_specs[Constants.COUNTRY_CODE] = order_data['country_code']
+
+        return {
+            key: sanitize_field(value)
+            for key, value in field_specs.items()
+        }

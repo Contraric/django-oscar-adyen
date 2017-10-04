@@ -49,6 +49,14 @@ class AbstractAdyenConfig:
         """
         raise NotImplementedError
 
+    def get_directory_url(self, request):
+        """Get Adyen HPP directory URL to post directory request to.
+
+        :param request: Django HTTP request object.
+        :return: Adyen HPP directory URL.
+        """
+        raise NotImplementedError
+
     def get_skin_code(self, request):
         """Get Adyen merchant skin code.
 

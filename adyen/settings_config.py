@@ -48,6 +48,13 @@ class FromSettingsConfig(AbstractAdyenConfig):
         """Return :data:`ADYEN_ACTION_URL`."""
         return settings.ADYEN_ACTION_URL
 
+    def get_directory_url(self, request):
+        """Return :data:`ADYEN_DIRECTORY_URL` or ``None``."""
+        try:
+            return settings.ADYEN_DIRECTORY_URL
+        except AttributeError:
+            return None
+
     def get_skin_code(self, request):
         """Return :data:`ADYEN_SKIN_CODE`."""
         return settings.ADYEN_SKIN_CODE

@@ -14,6 +14,7 @@ Constants = get_class('adyen.gateway', 'Constants')
 Gateway = get_class('adyen.gateway', 'Gateway')
 PaymentNotification = get_class('adyen.gateway', 'PaymentNotification')
 PaymentRedirection = get_class('adyen.gateway', 'PaymentRedirection')
+DirectoryRequest = get_class('adyen.gateway', 'DirectoryRequest')
 
 
 logger = logging.getLogger('adyen')
@@ -41,6 +42,7 @@ def get_gateway(request, config):
         Constants.IDENTIFIER: config.get_identifier(request),
         Constants.SECRET_KEY: secret_key,
         Constants.ACTION_URL: config.get_action_url(request),
+        Constants.DIRECTORY_URL: config.get_directory_url(request),
         Constants.SIGNER: signer_class(secret_key),
     })
 
@@ -77,6 +79,13 @@ class Facade:
         necessary to build the form that will be POSTed to Adyen.
         """
         return get_gateway(request, self.config).build_payment_form_fields(params)
+
+    def get_available_payment_methods(self, request, params):
+        """
+        Return a dict containing the name and value of all the hidden fields
+        necessary to build the form that will be POSTed to Adyen.
+        """
+        return get_gateway(request, self.config).get_available_payment_methods(params)
 
     @classmethod
     def _is_valid_ip_address(cls, s):

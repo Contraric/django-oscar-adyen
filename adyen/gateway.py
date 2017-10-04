@@ -1,5 +1,7 @@
 import logging
 
+import requests
+
 from .constants import Constants
 from .exceptions import (
     InvalidTransactionException,
@@ -14,7 +16,6 @@ logger = logging.getLogger('adyen')
 # ---[ GATEWAY ]---
 
 class Gateway:
-
     MANDATORY_SETTINGS = (
         Constants.IDENTIFIER,
         Constants.SECRET_KEY,
@@ -39,6 +40,7 @@ class Gateway:
         self.identifier = settings.get(Constants.IDENTIFIER)
         self.secret_key = settings.get(Constants.SECRET_KEY)
         self.action_url = settings.get(Constants.ACTION_URL)
+        self.directory_url = settings.get(Constants.DIRECTORY_URL)
         self.signer = settings.get(Constants.SIGNER)
 
     def _build_form_fields(self, adyen_request):
@@ -49,6 +51,9 @@ class Gateway:
 
     def build_payment_form_fields(self, params):
         return self._build_form_fields(PaymentFormRequest(self, params))
+
+    def get_available_payment_methods(self, params):
+        return DirectoryRequest(self, params).process()
 
 
 class BaseInteraction:
@@ -167,7 +172,6 @@ class PaymentFormRequest(BaseInteraction):
 # ---[ RESPONSES ]---
 
 class BaseResponse(BaseInteraction):
-
     def __init__(self, client, params):
         self.client = client
         self.secret_key = client.secret_key
@@ -265,3 +269,48 @@ class PaymentRedirection(BaseResponse):
         payment_result = self.params[Constants.AUTH_RESULT]
         accepted = payment_result == Constants.PAYMENT_RESULT_AUTHORISED
         return accepted, payment_result, self.params
+
+
+# ---[ REQUESTS ]---
+
+class BaseRequest(BaseInteraction):
+    def __init__(self, client, params):
+        self.client = client
+        self.secret_key = client.secret_key
+        self.params = params
+
+    def process(self):
+        return NotImplemented
+
+
+class DirectoryRequest(BaseInteraction):
+    REQUIRED_FIELDS = (
+        Constants.CURRENCY_CODE,
+        Constants.MERCHANT_ACCOUNT,
+        Constants.PAYMENT_AMOUNT,
+        Constants.SKIN_CODE,
+        Constants.MERCHANT_REFERENCE,
+        Constants.SESSION_VALIDITY,
+    )
+    OPTIONAL_FIELDS = (
+        Constants.MERCHANT_SIG,
+        Constants.COUNTRY_CODE,
+    )
+
+    def __init__(self, client, params=None):
+        if client.directory_url is None:
+            raise MissingParameterException(
+                "You need to specify the %s to make directory requests. "
+                "Please check your configuration."
+                % Constants.DIRECTORY_URL)
+        self.client = client
+        self.params = params or {}
+        self.validate()
+
+        # Compute request hash.
+        self.params.update(
+            self.client.signer.sign(self.params))
+
+    def process(self):
+        response = requests.post(self.client.directory_url, self.params)
+        return response.json()
